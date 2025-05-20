@@ -1,0 +1,13 @@
+{
+  "master_range": "34.34.0.0/16",
+  "blocks": [
+    {
+      "cidr": "34.34.60.0/22",
+      "name": ""
+    },
+    {
+      "cidr": "34.34.112.0/20",
+      "name": "GKE master nodes"
+    }
+  ]
+}
