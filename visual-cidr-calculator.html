@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Visual CIDR Calculator - v1.4.9</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Roboto:wght@400;500&display=swap');
+
+        :root {
+            --xke-primary-text: #C25CE2; 
+            --xke-button-grad-left: rgb(120, 50, 142);
+            --xke-button-grad-right: rgb(210, 100, 244);
+            
+            --xke-accent-teal: #4DB6AC; 
+            --xke-accent-teal-dark: #26A69A;
+            --xke-warning-orange: #FFB74D; 
+            --xke-danger-pink: #F06292;   
+
+            --xke-light-bg: #f7f5f9; 
+            --xke-content-bg: #ffffff;
+            --xke-text-dark: #4A4A4A; 
+            --xke-text-light: #f8f9fa;
+            --xke-border: #e8e1ef; 
+            --shadow-color: rgba(90, 50, 100, 0.1);
+
+            --primary-color: var(--xke-primary-text); 
+            --primary-button-bg: linear-gradient(to right, var(--xke-button-grad-left), var(--xke-button-grad-right));
+            --primary-button-hover-bg: linear-gradient(to right, 
+                color-mix(in srgb, var(--xke-button-grad-left) 90%, black), 
+                color-mix(in srgb, var(--xke-button-grad-right) 90%, black)
+            );
+
+            --secondary-color: var(--xke-accent-teal); 
+            --secondary-button-bg: var(--xke-accent-teal);
+            --secondary-button-hover-bg: var(--xke-accent-teal-dark);
+            
+            --light-bg: var(--xke-light-bg);
+            --dark-text: var(--xke-text-dark);
+            --light-text: var(--xke-text-light);
+            --border-color: var(--xke-border);
+
+            --existing-block-bg: #546E7A; 
+            --new-block-bg: var(--xke-primary-text); 
+            --collision-block-bg: var(--xke-danger-pink); 
+            --misaligned-block-bg: var(--xke-warning-orange);
+            --selected-block-border: var(--xke-accent-teal); 
+        }
+
+        body {
+            font-family: 'Roboto', 'Montserrat', sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 20px; background-color: var(--light-bg);
+            color: var(--dark-text); touch-action: manipulation; line-height: 1.6;
+        }
+        .container {
+            background-color: var(--xke-content-bg); padding: 30px; border-radius: 10px;
+            box-shadow: 0 6px 20px var(--shadow-color); width: 90%; max-width: 1050px;
+        }
+        h1 {
+            color: var(--primary-color); text-align: center; margin-bottom: 30px; font-weight: 700;
+            font-family: 'Montserrat', sans-serif;
+            letter-spacing: -0.5px;
+        }
+
+        .controls, .zoom-controls, .info-panel, .io-controls, .data-management-panel {
+            margin-bottom: 25px; padding: 20px; border: 1px solid var(--border-color);
+            border-radius: 8px; background-color: var(--xke-content-bg);
+             box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+        }
+        .controls hr, .io-controls hr, .data-management-panel hr { 
+            border: 0; height: 1px; background-color: var(--border-color); margin: 20px 0;
+        }
+        .data-management-panel { 
+            margin-top: 0; 
+        }
+
+        label { font-weight: 600; margin-bottom: 8px; display: block; color: var(--primary-color); }
+        
+        input[type="text"], select, textarea {
+            width: 100%; padding: 12px 15px; margin-bottom: 15px;
+            border: 1px solid var(--border-color); border-radius: 5px;
+            box-sizing: border-box; font-size: 0.95rem;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            background-color: #fdfdfd; color: var(--dark-text);
+        }
+        input[type="text"]:focus, select:focus, textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.15rem color-mix(in srgb, var(--primary-color) 25%, transparent); 
+            outline: none;
+        }
+        textarea { min-height: 75px; resize: vertical; }
+
+        .controls button, .zoom-controls button, .info-panel button, 
+        .io-controls button, .pan-button, .data-management-panel button { 
+            padding: 10px 20px; font-size: 0.9rem; border-radius: 5px;
+            border: none; cursor: pointer;
+            transition: background-image 0.3s ease, background-color 0.2s ease, transform 0.1s ease, box-shadow 0.15s ease;
+            font-weight: 600;
+            text-transform: uppercase; 
+            letter-spacing: 0.8px;
+            color: var(--light-text); 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .controls button:hover:not(:disabled), .zoom-controls button:hover:not(:disabled), 
+        .info-panel button:hover:not(:disabled), .io-controls button:hover:not(:disabled), 
+        .pan-button:hover:not(:disabled), .data-management-panel button:hover:not(:disabled) { 
+            transform: translateY(-2px);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+        }
+        .controls button:active:not(:disabled), .zoom-controls button:active:not(:disabled), 
+        .info-panel button:active:not(:disabled), .io-controls button:active:not(:disabled), 
+        .pan-button:active:not(:disabled), .data-management-panel button:active:not(:disabled) { 
+            transform: translateY(-1px);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        #set-total-range, #set-existing-blocks, #focus-button, 
+        #reserve-new-block-button, #export-blocks-button, #import-blocks-button {
+            background-image: var(--primary-button-bg);
+        }
+        #set-total-range:hover:not(:disabled), #set-existing-blocks:hover:not(:disabled), #focus-button:hover:not(:disabled),
+        #reserve-new-block-button:hover:not(:disabled), 
+        #export-blocks-button:hover:not(:disabled), 
+        #import-blocks-button:hover:not(:disabled) {
+            background-image: var(--primary-button-hover-bg);
+        }
+
+        #zoom-out-button, #reset-view-button, .pan-button, #cancel-move-button, #cancel-new-block-button { 
+            background-color: var(--secondary-color);
+        }
+        #zoom-out-button:hover:not(:disabled), #reset-view-button:hover:not(:disabled), 
+        .pan-button:hover:not(:disabled), #cancel-move-button:hover:not(:disabled), #cancel-new-block-button:hover:not(:disabled) { 
+            background-color: var(--secondary-button-hover-bg); 
+        }
+        .pan-button { padding: 5px 10px; font-size: 1rem; margin: 0 5px; }
+
+
+        button:disabled {
+            background-color: #e0e0e0 !important; 
+            background-image: none !important; 
+            color: #999999 !important;
+            cursor: not-allowed !important; transform: none !important; box-shadow: none !important;
+        }
+        
+        .master-range-selection {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .master-range-selection label {
+            margin-bottom: 0; 
+            flex-shrink: 0;
+        }
+        .master-range-selection select {
+            flex-grow: 1;
+            margin-bottom: 0;
+        }
+        #total-cidr-label { 
+             margin-bottom: 0; 
+        }
+
+        .visualization-container { 
+            position: relative; 
+            padding-top: 25px; /* For range labels */
+            flex-grow: 1;
+            margin-bottom: 8px; 
+        }
+        .pan-button-container {
+            position: absolute;
+            top: 80px; 
+            transform: translateY(-50%); 
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none; 
+            z-index: 10; 
+        }
+        .pan-button-container .pan-button {
+            pointer-events: all; 
+        }
+
+        .visualization-area {
+            height: 110px; 
+            background-color: #ede7f6; 
+            border: 1px solid var(--border-color);
+            position: relative; 
+            overflow: hidden; border-radius: 6px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
+        #placement-guides { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 0; }
+        .placement-guide-line { position: absolute; top: 0; bottom: 0; width: 1px; background-color: color-mix(in srgb, var(--xke-primary-text) 20%, transparent); }
+        .range-label { 
+            position: absolute; font-size: 10px; color: var(--xke-medium-gray, #555); 
+            white-space: nowrap; background-color: rgba(255,255,255,0.85); padding: 2px 4px; border-radius: 3px;
+        }
+        #total-range-start-label { left: 5px; top: -22px; }
+        #total-range-end-label { right: 5px; top: -22px; }
+
+        .cidr-block {
+            position: absolute; height: 100%; 
+            border: 1px solid rgba(0,0,0,0.15); 
+            box-sizing: border-box;
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 10px; font-weight: 600; color: var(--light-text); 
+            text-shadow: 0 1px 1px rgba(0,0,0,0.3); 
+            overflow: hidden; white-space: nowrap; cursor: pointer; 
+            border-radius: 4px; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .cidr-block:hover:not(.dragging) { 
+            transform: translateY(-1px); 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        .total-range-bar { width: 100%; height: 100%; position: relative; }
+        
+        .existing-block {
+            background: var(--existing-block-bg);
+            border-color: color-mix(in srgb, var(--existing-block-bg) 60%, black);
+        }
+        .existing-block.selected-for-move { 
+            border: 2px solid var(--selected-block-border); 
+            box-shadow: 0 0 8px color-mix(in srgb, var(--selected-block-border) 60%, transparent);
+            opacity: 0.95; z-index: 3 !important; 
+            transform: scale(1.01);
+        }
+        .new-block-draggable { 
+            background: var(--new-block-bg);
+            border-color: color-mix(in srgb, var(--new-block-bg) 60%, black);
+            cursor: grab !important; z-index: 2; opacity: 0.9; 
+        }
+        .new-block-draggable.dragging { 
+            cursor: grabbing !important; 
+            opacity: 0.95;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transform: scale(1.01);
+        }
+        .new-block-draggable.collision { 
+            background: var(--collision-block-bg);
+            border-color: color-mix(in srgb, var(--collision-block-bg) 60%, black);
+        }
+        .new-block-draggable.misaligned { 
+             background: var(--misaligned-block-bg);
+             border-color: color-mix(in srgb, var(--misaligned-block-bg) 70%, black);
+             color: var(--dark-text); 
+             text-shadow: none;
+        }
+        #focus-selection-rect {
+            position: absolute; top: 0; height: 100%; 
+            background-color: color-mix(in srgb, var(--xke-primary-text) 15%, transparent); 
+            border: 1.5px dashed var(--xke-primary-text); 
+            z-index: 5; 
+            pointer-events: none; display: none; border-radius: 3px;
+        }
+        #current-view-info {
+            text-align: center; font-size: 0.9rem; color: var(--xke-medium-gray, #555);
+            margin-top: 10px; padding: 8px; background-color: var(--xke-white, #fff); border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .info-panel pre { 
+            background-color: var(--xke-light-bg); padding: 15px; 
+            border: 1px solid var(--border-color); border-radius: 6px; 
+            white-space: pre-wrap; word-break: break-all; 
+            font-size: 0.9rem; line-height: 1.6;
+            color: var(--dark-text);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .info-panel #new-block-name { width: calc(100% - 24px); margin-bottom: 8px;}
+        .info-panel .action-buttons { display: flex; gap: 10px; }
+        .info-panel .action-buttons button { flex-grow: 1; }
+        .info-panel .action-buttons.move-mode-active {
+            flex-direction: row-reverse; 
+        }
+
+
+        .error-message { color: var(--xke-danger-pink); font-weight: 500; margin-top:10px; }
+        #import-file-input { display: none; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    
+</head>
+<body>
+    <div class="container">
+        <h1>Visual CIDR Calculator</h1>
+        <div class="controls"> <!-- Initial Setup Controls -->
+            <div class="master-range-selection">
+                <label for="master-range-preset">Master Range Preset:</label>
+                <select id="master-range-preset">
+                    <option value="10.0.0.0/8">10.0.0.0/8 (RFC1918 Class A)</option>
+                    <option value="172.16.0.0/12">172.16.0.0/12 (RFC1918 Class B)</option>
+                    <option value="192.168.0.0/16">192.168.0.0/16 (RFC1918 Class C)</option>
+                    <option value="custom">Custom...</option>
+                </select>
+            </div>
+            <label for="total-cidr" id="total-cidr-label" style="display:none;">Custom Master CIDR:</label>
+            <input type="text" id="total-cidr" value="10.0.0.0/8" style="display:none;"> 
+            <button id="set-total-range">Set Master Range</button>
+            <hr>
+            <label for="new-block-size">New Block Size (for dragging onto bar):</label>
+            <select id="new-block-size">
+                <option value="">- Select Size -</option>
+            </select>
+        </div>
+
+        <div class="zoom-controls">
+            <label for="focus-cidr">Focus on Subnet (CIDR):</label>
+            <input type="text" id="focus-cidr" placeholder="e.g., 10.0.0.0/20 or drag-select on bar">
+            <button id="focus-button">Focus In</button>
+            <button id="zoom-out-button" style="display:none;">Zoom Out</button>
+            <button id="reset-view-button">Reset View to Master</button>
+        </div>
+
+         <div class="visualization-container">
+            <div class="pan-button-container">
+                 <button id="pan-left-button" class="pan-button" title="Pan Left" style="display:none;">&larr;</button>
+                 <button id="pan-right-button" class="pan-button" title="Pan Right" style="display:none;">&rarr;</button>
+            </div>
+            <div id="total-range-start-label" class="range-label"></div>
+            <div id="total-range-end-label" class="range-label"></div>
+            <div id="visualization-area" class="visualization-area">
+                <div id="placement-guides"></div>
+                <div id="total-range-bar" class="total-range-bar"></div>
+                <div id="focus-selection-rect"></div>
+            </div>
+        </div>
+        <div id="current-view-info">Current View: Not Set</div>
+        
+        <div class="info-panel"> <!-- Block Interaction Panel -->
+            <h3>Block Info / Actions:</h3>
+            <pre id="new-block-info">Set master range and select a new block size or click an existing block to modify. Or, drag on the bar above to select a focus area.</pre>
+            <input type="text" id="new-block-name" placeholder="Optional Name for New/Moved Block">
+            <div class="action-buttons"> 
+                <button id="cancel-new-block-button" style="display:none;">Cancel New</button>
+                <button id="reserve-new-block-button" disabled>Reserve / Confirm</button>
+                <button id="cancel-move-button" style="display:none;">Cancel Move</button>
+            </div>
+            <p id="error-message" class="error-message"></p>
+        </div>
+
+        <div class="data-management-panel"> <!-- Data Management: Existing Blocks & IO -->
+            <label for="existing-cidrs">Existing CIDRs (one per line, format: IP/Prefix # Optional Name):</label>
+            <textarea id="existing-cidrs" placeholder="e.g., 10.0.10.0/24 # Web Servers&#10;10.0.20.0/23 # Databases"></textarea>
+            <button id="set-existing-blocks">Load Existing Blocks From Text</button>
+            <hr>
+            <div class="io-controls">
+                <label for="export-format">Export Format:</label>
+                <select id="export-format">
+                    <option value="text">Text (.txt)</option>
+                    <option value="json">JSON (.json)</option>
+                    <option value="xml">XML (.xml)</option>
+                    <option value="yaml">YAML (.yaml)</option>
+                </select>
+                <button id="export-blocks-button" disabled>Export All Blocks</button>
+                <button id="import-blocks-button" disabled>Import Blocks From File</button>
+                <input type="file" id="import-file-input" accept=".txt,.json,.xml,.yaml,.yml">
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const totalCidrInput = document.getElementById('total-cidr');
+            const masterRangePresetSelect = document.getElementById('master-range-preset');
+            const totalCidrLabel = document.getElementById('total-cidr-label'); 
+
+            const setTotalRangeButton = document.getElementById('set-total-range');
+            const existingCidrsTextarea = document.getElementById('existing-cidrs');
+            const setExistingBlocksButton = document.getElementById('set-existing-blocks');
+            const newBlockSizeSelect = document.getElementById('new-block-size');
+            const visualizationArea = document.getElementById('visualization-area');
+            const placementGuidesDiv = document.getElementById('placement-guides');
+            const totalRangeBar = document.getElementById('total-range-bar');
+            const newBlockInfoPre = document.getElementById('new-block-info');
+            const errorMessageP = document.getElementById('error-message');
+            const totalRangeStartLabel = document.getElementById('total-range-start-label');
+            const totalRangeEndLabel = document.getElementById('total-range-end-label');
+            const focusCidrInput = document.getElementById('focus-cidr');
+            const focusButton = document.getElementById('focus-button');
+            const zoomOutButton = document.getElementById('zoom-out-button');
+            const resetViewButton = document.getElementById('reset-view-button');
+            const newBlockNameInput = document.getElementById('new-block-name');
+            const reserveNewBlockButton = document.getElementById('reserve-new-block-button');
+            const cancelMoveButton = document.getElementById('cancel-move-button');
+            const cancelNewBlockButton = document.getElementById('cancel-new-block-button'); // New button
+            const focusSelectionRectDOM = document.getElementById('focus-selection-rect');
+            const exportFormatSelect = document.getElementById('export-format');
+            const exportBlocksButton = document.getElementById('export-blocks-button');
+            const importBlocksButton = document.getElementById('import-blocks-button');
+            const importFileInput = document.getElementById('import-file-input');
+            const panLeftButton = document.getElementById('pan-left-button');
+            const panRightButton = document.getElementById('pan-right-button');
+            const currentViewInfoDiv = document.getElementById('current-view-info');
+            const actionButtonsContainer = reserveNewBlockButton.parentElement;
+
+
+            let masterTotalRange = null, currentVisibleRange = null;
+            let masterExistingBlocks = [], displayedExistingBlocks = [];
+            let newBlock = null; 
+            let draggable = { dragging: false, element: null, offsetX: 0, isTouch: false };
+            let viewHistoryStack = [];
+            let isSelectingFocusArea = false, focusSelectionStartPx = 0;
+            const MIN_FOCUS_SELECTION_PX = 5; 
+            const MIN_FOCUS_PREFIX = 30;
+
+
+            function ipToLong(ip) {
+                return ip.split('.').reduce((int, octet) => (int << 8) + parseInt(octet, 10), 0) >>> 0;
+            }
+
+            function longToIp(long) {
+                return `${(long >>> 24)}.${(long >> 16 & 255)}.${(long >> 8 & 255)}.${(long & 255)}`;
+            }
+            
+            function getCidrInfo(cidrStrWithOptionalName) {
+                try {
+                    let cidrStr = cidrStrWithOptionalName, name = null;
+                    const nameSeparatorIndex = cidrStrWithOptionalName.indexOf('#');
+                    if (nameSeparatorIndex !== -1) {
+                        cidrStr = cidrStrWithOptionalName.substring(0, nameSeparatorIndex).trim();
+                        name = cidrStrWithOptionalName.substring(nameSeparatorIndex + 1).trim();
+                    }
+
+                    const [ip, prefixStr] = cidrStr.split('/');
+                    if (!ip || !prefixStr) throw new Error("Invalid CIDR format (A.B.C.D/N)");
+                    
+                    if (!/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(ip)) {
+                         throw new Error(`Invalid IP address part (basic check): ${ip}`);
+                    }
+
+                    const prefix = parseInt(prefixStr, 10);
+                    if (isNaN(prefix) || prefix < 0 || prefix > 32) throw new Error("Invalid prefix length");
+
+                    const ipLong = ipToLong(ip);
+                    const hostBits = 32 - prefix;
+                    const netmask = hostBits === 32 ? 0 : (~0 << hostBits) >>> 0;
+                    
+                    const startInt = (ipLong & netmask) >>> 0;
+                    const numAddresses = Math.pow(2, hostBits);
+                    let endInt = startInt + numAddresses - 1;
+
+                    if (prefix === 0) { 
+                        endInt = 0xFFFFFFFF;
+                    } else if (startInt > endInt && numAddresses > 0) { 
+                         endInt = 0xFFFFFFFF; 
+                    }
+                     if (endInt > 0xFFFFFFFF) endInt = 0xFFFFFFFF; 
+
+
+                    return { 
+                        cidrStr: `${longToIp(startInt)}/${prefix}`, 
+                        startInt: startInt,
+                        endInt: endInt,
+                        numAddresses, 
+                        prefix, 
+                        name: name || "" 
+                    };
+                } catch (e) {
+                    console.error("Error in getCidrInfo:", e.message, "for input:", cidrStrWithOptionalName);
+                    showError(`Invalid CIDR input: "${cidrStrWithOptionalName}". ${e.message}`); return null;
+                }
+            }
+            
+            function getEncompassingCidrForFocus(startInt, endInt) {
+                if (!currentVisibleRange) return null; 
+                if (startInt > endInt) [startInt, endInt] = [endInt, startInt];
+
+                startInt = Math.max(startInt, currentVisibleRange.startInt);
+                endInt = Math.min(endInt, currentVisibleRange.endInt);
+                if (startInt > endInt) startInt = endInt; 
+
+                const numAddressesNeeded = endInt - startInt + 1;
+                if (numAddressesNeeded <= 0) return null;
+
+                let prefix = 32;
+                while (Math.pow(2, 32 - prefix) < numAddressesNeeded) {
+                    prefix--;
+                    if (prefix < 0) return null;
+                }
+                
+                prefix = Math.min(prefix, MIN_FOCUS_PREFIX); 
+                prefix = Math.max(prefix, currentVisibleRange.prefix); 
+
+                const blockSize = Math.pow(2, 32 - prefix);
+                let networkStartLong = Math.floor(startInt / blockSize) * blockSize;
+                
+                if (masterTotalRange) { 
+                    networkStartLong = Math.max(networkStartLong, masterTotalRange.startInt);
+                }
+                
+                const finalCidrStr = `${longToIp(networkStartLong)}/${prefix}`;
+                return getCidrInfo(finalCidrStr); 
+            }
+
+
+            function showError(message) { errorMessageP.textContent = message; }
+            function clearError() { errorMessageP.textContent = ''; }
+            
+            function updatePanButtonsVisibility() {
+                const isZoomedIn = masterTotalRange && currentVisibleRange && currentVisibleRange.cidrStr !== masterTotalRange.cidrStr;
+                panLeftButton.style.display = isZoomedIn ? 'inline-block' : 'none';
+                panRightButton.style.display = isZoomedIn ? 'inline-block' : 'none';
+
+                if (isZoomedIn) {
+                    panLeftButton.disabled = currentVisibleRange.startInt <= masterTotalRange.startInt;
+                    panRightButton.disabled = currentVisibleRange.endInt >= masterTotalRange.endInt; 
+                } else { 
+                    panLeftButton.disabled = true;
+                    panRightButton.disabled = true;
+                }
+            }
+
+            function updateCurrentViewInfo() {
+                if (currentVisibleRange) {
+                    currentViewInfoDiv.textContent = `Current View: ${currentVisibleRange.cidrStr} (${currentVisibleRange.numAddresses.toLocaleString()} IPs)`;
+                } else {
+                    currentViewInfoDiv.textContent = "Current View: Not Set";
+                }
+            }
+
+
+            function updateViewControls() {
+                zoomOutButton.style.display = viewHistoryStack.length > 0 ? 'inline-block' : 'none';
+                resetViewButton.style.display = (masterTotalRange && currentVisibleRange && masterTotalRange.cidrStr !== currentVisibleRange.cidrStr) ? 'inline-block' : 'none';
+                updatePanButtonsVisibility();
+            }
+            function updateIOButtonsState() {
+                const disabled = !masterTotalRange;
+                exportBlocksButton.disabled = disabled || masterExistingBlocks.length === 0;
+                importBlocksButton.disabled = disabled;
+            }
+            function cleanupPreviousNewBlockState(keepName = false) {
+                if (newBlock && newBlock.domElement && !newBlock.isExistingMove) { 
+                    newBlock.domElement.remove();
+                } else if (newBlock && newBlock.domElement && newBlock.isExistingMove) { 
+                     newBlock.domElement.classList.remove('new-block-draggable', 'selected-for-move');
+                     removeDraggableListeners(newBlock.domElement); 
+                }
+
+                newBlock = null; 
+                if (!keepName) newBlockNameInput.value = "";
+                reserveNewBlockButton.disabled = true; 
+                reserveNewBlockButton.textContent = "Reserve / Confirm";
+                cancelMoveButton.style.display = 'none'; 
+                cancelNewBlockButton.style.display = 'none';
+                actionButtonsContainer.classList.remove('move-mode-active');
+                updateVisualizationAreaCursor();
+            }
+            function updateVisualizationAreaCursor() {
+                if (newBlock || newBlockSizeSelect.value !== "" || isSelectingFocusArea) visualizationArea.style.cursor = 'default';
+                else visualizationArea.style.cursor = 'crosshair';
+            }
+            function initializeNewView(rangeInfo) {
+                 if (!rangeInfo || typeof rangeInfo.startInt !== 'number' || typeof rangeInfo.endInt !== 'number' || typeof rangeInfo.numAddresses !== 'number' || rangeInfo.numAddresses <= 0) {
+                    showError("Failed to initialize new view: Invalid range object properties.");
+                    if (viewHistoryStack.length > 0) { 
+                        const lastValidView = viewHistoryStack.pop();
+                        if(lastValidView && typeof lastValidView.startInt === 'number') currentVisibleRange = lastValidView;
+                        else if (masterTotalRange) currentVisibleRange = masterTotalRange;
+                        else { showError("Critical error: No valid range. Set master range."); return; }
+                    } else if (masterTotalRange) { currentVisibleRange = masterTotalRange; } 
+                    else { showError("Critical error: No valid range. Set master range."); return; }
+                    console.warn("Recovered view due to invalid rangeInfo for: ", rangeInfo, "Recovered to:", currentVisibleRange);
+                } else { currentVisibleRange = rangeInfo; }
+
+                totalRangeBar.title = `Current View: ${currentVisibleRange.cidrStr} (${currentVisibleRange.numAddresses.toLocaleString()} IPs)`;
+                totalRangeStartLabel.textContent = longToIp(currentVisibleRange.startInt);
+                totalRangeEndLabel.textContent = longToIp(currentVisibleRange.endInt);
+                updateCurrentViewInfo();
+                
+                displayedExistingBlocks = masterExistingBlocks.filter(block => checkOverlap(block, currentVisibleRange))
+                    .map(block => ({ ...block, displayStartInt: Math.max(block.startInt, currentVisibleRange.startInt), displayEndInt: Math.min(block.endInt, currentVisibleRange.endInt), displayNumAddresses: Math.max(0, Math.min(block.endInt, currentVisibleRange.endInt) - Math.max(block.startInt, currentVisibleRange.startInt) + 1) }));
+                cleanupPreviousNewBlockState(); populateBlockSizeDropdown(); renderBlocks();
+                updateNewBlockInfoPanelWithDefault(); updateViewControls(); updateIOButtonsState();
+            }
+            function populateBlockSizeDropdown() {
+                newBlockSizeSelect.innerHTML = '<option value="">- Select Size -</option>';
+                if (!currentVisibleRange || typeof currentVisibleRange.numAddresses !== 'number' || currentVisibleRange.numAddresses <= 0) { 
+                    return;
+                }
+                for (let i = currentVisibleRange.prefix + 1; i <= 32; i++) {
+                    const numIPs = Math.pow(2, 32 - i);
+                    if (numIPs === 0 && i !== 32) continue; 
+                    if (numIPs > currentVisibleRange.numAddresses && !(i === 32 && currentVisibleRange.numAddresses === 1) ) continue;
+                    
+                    const option = document.createElement('option'); option.value = i; option.textContent = `/${i} (${numIPs.toLocaleString()} IPs)`;
+                    newBlockSizeSelect.appendChild(option);
+                }
+                updateVisualizationAreaCursor();
+            }
+            function renderPlacementGuides() {
+                placementGuidesDiv.innerHTML = ''; if (!newBlock || typeof newBlock.numAddresses !== 'number' || newBlock.numAddresses <= 0 || !currentVisibleRange || currentVisibleRange.numAddresses <=0 ) return;
+                const blockAlignmentUnit = newBlock.numAddresses; 
+                
+                const numPotentialSlots = currentVisibleRange.numAddresses / blockAlignmentUnit;
+                const MAX_GUIDES = 256; if (numPotentialSlots > MAX_GUIDES && blockAlignmentUnit > 1) return;
+                
+                let currentGuideIpLong = alignToBlockBoundary(currentVisibleRange.startInt, blockAlignmentUnit);
+                if (currentGuideIpLong < currentVisibleRange.startInt && blockAlignmentUnit > 0) currentGuideIpLong += blockAlignmentUnit; 
+                
+                let count = 0; 
+                while (currentGuideIpLong <= currentVisibleRange.endInt && count < MAX_GUIDES * 2) { 
+                    if (currentGuideIpLong >= currentVisibleRange.startInt) {
+                        const percentageLeft = ((currentGuideIpLong - currentVisibleRange.startInt) / currentVisibleRange.numAddresses) * 100;
+                        if (percentageLeft >=0 && percentageLeft <= 100) {
+                            const guideLine = document.createElement('div'); guideLine.className = 'placement-guide-line'; guideLine.style.left = `${percentageLeft}%`;
+                            placementGuidesDiv.appendChild(guideLine);
+                        }
+                    }
+                    if (blockAlignmentUnit <= 0) break; 
+                    currentGuideIpLong += blockAlignmentUnit;
+                    count++;
+                }
+            }
+            function renderBlocks() {
+                totalRangeBar.innerHTML = ''; if (!currentVisibleRange) return;
+                displayedExistingBlocks.forEach(blockInDisplay => {
+                    const originalMasterBlock = masterExistingBlocks.find(mb => mb.startInt === blockInDisplay.startInt && mb.cidrStr === blockInDisplay.cidrStr);
+                    if (newBlock && newBlock.isExistingMove && newBlock.originalMasterBlockRef === originalMasterBlock) {
+                        if (newBlock.domElement && !newBlock.domElement.parentElement) {
+                            totalRangeBar.appendChild(newBlock.domElement);
+                        }
+                        return; 
+                    }
+                    const blockDiv = createBlockDiv({ ...blockInDisplay }, 'existing-block', currentVisibleRange); 
+                    
+                    let titleText = `${blockInDisplay.cidrStr} (${blockInDisplay.numAddresses.toLocaleString()} IPs)`; 
+                    if (blockInDisplay.name) titleText += `\nName: ${blockInDisplay.name}`; 
+                    titleText += `\nRange: ${longToIp(blockInDisplay.startInt)} - ${longToIp(blockInDisplay.endInt)}`;
+                    blockDiv.title = titleText;
+
+                    blockDiv.textContent = `/${blockInDisplay.prefix}`;
+                    
+                    blockDiv.addEventListener('click', (e) => { e.stopPropagation(); handleExistingBlockClick(originalMasterBlock, blockDiv); });
+                    totalRangeBar.appendChild(blockDiv);
+                });
+                if (newBlock && newBlock.domElement && !newBlock.isExistingMove) { 
+                    if (!newBlock.domElement.parentElement) {
+                        totalRangeBar.appendChild(newBlock.domElement);
+                    }
+                } else if (newBlock && newBlock.domElement && newBlock.isExistingMove && newBlock.domElement.classList.contains('selected-for-move')) {
+                    if (!newBlock.domElement.parentElement) {
+                        totalRangeBar.appendChild(newBlock.domElement);
+                    }
+                }
+                renderPlacementGuides();
+            }
+            function createBlockDiv(blockInfo, className, relativeToRange) {
+                const div = document.createElement('div'); div.className = `cidr-block ${className}`;
+                const numAddrForWidth = typeof blockInfo.displayNumAddresses === 'number' ? blockInfo.displayNumAddresses : blockInfo.numAddresses;
+                if (!relativeToRange || typeof relativeToRange.numAddresses !== 'number' || relativeToRange.numAddresses <= 0) { 
+                     div.style.left = '0%'; div.style.width = '0%'; return div;
+                }
+                const percentageStart = ((blockInfo.startInt - relativeToRange.startInt) / relativeToRange.numAddresses) * 100;
+                const percentageWidth = (numAddrForWidth / relativeToRange.numAddresses) * 100;
+                
+                const clampedStart = Math.max(0, Math.min(100, percentageStart));
+                const clampedWidth = Math.max(0.1, Math.min(percentageWidth, 100 - clampedStart));
+
+                div.style.left = `${clampedStart}%`;
+                div.style.width = `${clampedWidth}%`; 
+                div.dataset.startInt = blockInfo.startInt; div.dataset.endInt = blockInfo.endInt; return div;
+            }
+            function updateNewBlockInfoPanel(startLong, endLong, prefix, name, numAddresses, collision, misaligned, isMove = false) { 
+                let infoText = `Selected Block: /${prefix}${name ? ' (' + name + ')' : ''}\n`;
+                infoText += `Num Addresses: ${numAddresses.toLocaleString()}\n`;
+                infoText += `Calculated Start IP: ${longToIp(startLong)}\n`; 
+                infoText += `Calculated End IP: ${longToIp(endLong)}\n`; 
+                infoText += `CIDR: ${longToIp(startLong)}/${prefix}\n`;
+                let canConfirm = false; if (collision) infoText += "Status: COLLISION DETECTED!"; else if (misaligned) infoText += "Status: MISALIGNED PLACEMENT!"; else { infoText += "Status: Valid placement."; canConfirm = true; }
+                newBlockInfoPre.textContent = infoText; 
+                newBlockNameInput.value = name || ""; 
+                reserveNewBlockButton.disabled = !canConfirm; 
+                reserveNewBlockButton.textContent = isMove ? "Confirm Move" : "Reserve This Block";
+                
+                if(isMove) {
+                    cancelMoveButton.style.display = 'inline-block';
+                    cancelNewBlockButton.style.display = 'none';
+                    actionButtonsContainer.classList.add('move-mode-active');
+                } else { // New block mode
+                    cancelNewBlockButton.style.display = 'inline-block';
+                    cancelMoveButton.style.display = 'none';
+                    actionButtonsContainer.classList.remove('move-mode-active');
+                }
+            }
+            function updateNewBlockInfoPanelWithDefault() {
+                 newBlockInfoPre.textContent = currentVisibleRange ? "Select a new block size or click an existing block. Or, drag on the bar above to select a focus area." : "Set master range first.";
+                 reserveNewBlockButton.disabled = true; reserveNewBlockButton.textContent = "Reserve / Confirm"; 
+                 cancelMoveButton.style.display = 'none';
+                 cancelNewBlockButton.style.display = 'none';
+                 actionButtonsContainer.classList.remove('move-mode-active');
+                 newBlockNameInput.value = "";
+                 updateVisualizationAreaCursor();
+            }
+            function updateExistingCidrsTextarea() {
+                existingCidrsTextarea.value = masterExistingBlocks.map(b => `${b.cidrStr}${b.name ? ` # ${b.name}` : ''}`).join('\n'); 
+                updateIOButtonsState();
+            }
+
+            masterRangePresetSelect.addEventListener('change', () => {
+                const selectedValue = masterRangePresetSelect.value;
+                if (selectedValue === "custom") {
+                    totalCidrLabel.style.display = 'block';
+                    totalCidrInput.style.display = 'block';
+                    totalCidrInput.readOnly = false;
+                    totalCidrInput.focus();
+                } else {
+                    totalCidrInput.value = selectedValue;
+                    totalCidrLabel.style.display = 'none'; 
+                    totalCidrInput.style.display = 'none'; 
+                    totalCidrInput.readOnly = true; 
+                }
+            });
+
+
+            setTotalRangeButton.addEventListener('click', () => { 
+                clearError(); 
+                const cidrStr = totalCidrInput.value.trim(); 
+                const info = getCidrInfo(cidrStr); 
+                if (info) { 
+                    masterTotalRange = info; 
+                    viewHistoryStack = []; 
+                    initializeNewView(masterTotalRange); 
+                    
+                    let matchedPreset = false;
+                    for(let option of masterRangePresetSelect.options){
+                        if(option.value === info.cidrStr){
+                            masterRangePresetSelect.value = option.value;
+                            totalCidrLabel.style.display = 'none';
+                            totalCidrInput.style.display = 'none';
+                            totalCidrInput.readOnly = true;
+                            matchedPreset = true;
+                            break;
+                        }
+                    }
+                    if(!matchedPreset){ 
+                        masterRangePresetSelect.value = "custom";
+                        totalCidrLabel.style.display = 'block';
+                        totalCidrInput.style.display = 'block';
+                        totalCidrInput.readOnly = false;
+                    }
+
+                } 
+            });
+            setExistingBlocksButton.addEventListener('click', () => {
+                clearError(); if (!masterTotalRange) { showError("Set master range first."); return; }
+                const cidrsRaw = existingCidrsTextarea.value.trim().split('\n'); const tempMasterBlocks = []; let errorFound = false;
+                for (const cidrEntry of cidrsRaw) {
+                    if (cidrEntry.trim() === "") continue; const info = getCidrInfo(cidrEntry.trim());
+                    if (info) {
+                        if (info.startInt < masterTotalRange.startInt || info.endInt > masterTotalRange.endInt) { showError(`Block ${info.cidrStr} outside Master Range.`); errorFound = true; break; }
+                        for (const eb of tempMasterBlocks) if (checkOverlap(info, eb)) { showError(`Blocks ${info.cidrStr} and ${eb.cidrStr} overlap.`); errorFound = true; break; }
+                        if (errorFound) break; tempMasterBlocks.push(info);
+                    } else { errorFound = true; break; } 
+                }
+                if (!errorFound) { masterExistingBlocks = tempMasterBlocks.sort((a,b) => a.startInt - b.startInt); initializeNewView(currentVisibleRange); updateExistingCidrsTextarea();}
+            });
+            
+            function addDraggableListeners(element) { element.addEventListener('mousedown', handleMouseDownDraggable); element.addEventListener('touchstart', handleTouchStartDraggable, { passive: true }); }
+            function removeDraggableListeners(element) { element.removeEventListener('mousedown', handleMouseDownDraggable); element.removeEventListener('touchstart', handleTouchStartDraggable); }
+            
+            function handleExistingBlockClick(blockData, blockDomElement) {
+                clearError();
+                if (!currentVisibleRange) return;
+            
+                if (newBlock && newBlock.isExistingMove && newBlock.originalMasterBlockRef === blockData) {
+                    return; 
+                }
+            
+                cleanupPreviousNewBlockState(true); 
+            
+                newBlock = {
+                    domElement: blockDomElement, 
+                    sizePrefix: blockData.prefix,
+                    numAddresses: blockData.numAddresses,
+                    currentStartInt: blockData.startInt,
+                    currentEndInt: blockData.endInt,
+                    name: blockData.name,
+                    isExistingMove: true,
+                    originalMasterBlockRef: blockData 
+                };
+            
+                newBlock.domElement.classList.add('new-block-draggable', 'selected-for-move');
+                addDraggableListeners(newBlock.domElement);
+                
+                newBlockNameInput.value = newBlock.name; 
+                newBlockSizeSelect.value = ""; 
+                renderPlacementGuides(); 
+                updateNewBlockPositionAndInfo(newBlock.currentStartInt, true); 
+                
+                if (newBlock.domElement.parentElement) { 
+                    newBlock.domElement.parentElement.appendChild(newBlock.domElement);
+                }
+                
+                updateVisualizationAreaCursor();
+                reserveNewBlockButton.textContent = "Confirm Move";
+                cancelMoveButton.style.display = 'inline-block';
+                cancelNewBlockButton.style.display = 'none';
+                actionButtonsContainer.classList.add('move-mode-active');
+            }
+
+
+            newBlockSizeSelect.addEventListener('change', (e) => {
+                clearError(); 
+                if (newBlock && newBlock.isExistingMove) { 
+                    newBlock.domElement.classList.remove('new-block-draggable', 'selected-for-move');
+                    removeDraggableListeners(newBlock.domElement);
+                }
+                cleanupPreviousNewBlockState(); 
+                renderPlacementGuides(); 
+
+                const selectedPrefix = parseInt(e.target.value, 10);
+                if (!currentVisibleRange) { showError("Set range/zoom first."); newBlockSizeSelect.value = ""; return; }
+                if (isNaN(selectedPrefix)) { updateNewBlockInfoPanelWithDefault(); renderBlocks(); return; }
+                
+                const numAddressesForNew = Math.pow(2, 32 - selectedPrefix);
+                if (numAddressesForNew <= 0 && selectedPrefix !== 32) { showError("Invalid block size (0 addresses for non-/32)."); return; } 
+                if (numAddressesForNew > currentVisibleRange.numAddresses && !(selectedPrefix === 32 && currentVisibleRange.numAddresses === 1) ) { showError(`New block /${selectedPrefix} larger than view.`); updateNewBlockInfoPanelWithDefault(); renderBlocks(); return; }
+                
+                const newDomElement = document.createElement('div'); 
+                newDomElement.className = 'cidr-block new-block-draggable'; 
+                newDomElement.textContent = `/${selectedPrefix}`; 
+                newDomElement.title = `New /${selectedPrefix} block`;
+                addDraggableListeners(newDomElement);
+                
+                newBlock = { domElement: newDomElement, sizePrefix: selectedPrefix, numAddresses: numAddressesForNew, currentStartInt: currentVisibleRange.startInt, currentEndInt: (currentVisibleRange.startInt + numAddressesForNew - 1), name: "", isExistingMove: false, originalMasterBlockRef: null };
+                
+                renderBlocks(); 
+                updateNewBlockPositionAndInfo(newBlock.currentStartInt); 
+                updateVisualizationAreaCursor();
+                cancelNewBlockButton.style.display = 'inline-block'; // Show cancel for new block
+                cancelMoveButton.style.display = 'none';
+                actionButtonsContainer.classList.remove('move-mode-active');
+            });
+
+            cancelMoveButton.addEventListener('click', () => {
+                if (newBlock && newBlock.isExistingMove) {
+                    newBlock.domElement.classList.remove('new-block-draggable', 'selected-for-move');
+                    removeDraggableListeners(newBlock.domElement); 
+                }
+                cleanupPreviousNewBlockState();
+                renderBlocks(); 
+                updateNewBlockInfoPanelWithDefault();
+            });
+            
+            cancelNewBlockButton.addEventListener('click', () => {
+                cleanupPreviousNewBlockState();
+                newBlockSizeSelect.value = ""; // Reset dropdown
+                renderBlocks(); 
+                updateNewBlockInfoPanelWithDefault();
+            });
+
+            
+            function alignToBlockBoundary(ipInt, blockSize) { 
+                if (blockSize <= 0) return ipInt; 
+                return Math.floor(ipInt / blockSize) * blockSize; 
+            }
+            function updateNewBlockPositionAndInfo(potentialStartIpAttemptLong, fromExistingClick = false) {
+                if (!newBlock || !currentVisibleRange || typeof newBlock.numAddresses !== 'number' || newBlock.numAddresses <= 0 ) return; 
+                const blockAlignmentUnit = newBlock.numAddresses; 
+                
+                if (blockAlignmentUnit === 0 && newBlock.sizePrefix !== 32) { console.warn("Block alignment unit is 0 for non /32 prefix, aborting update."); return; }
+
+                let desiredStartIpLong = Math.max(currentVisibleRange.startInt, potentialStartIpAttemptLong);
+                desiredStartIpLong = Math.min(desiredStartIpLong, currentVisibleRange.endInt - Math.max(0, newBlock.numAddresses - 1) ); 
+
+                if (blockAlignmentUnit > 0) desiredStartIpLong = alignToBlockBoundary(desiredStartIpLong, blockAlignmentUnit);
+                
+                if (desiredStartIpLong < currentVisibleRange.startInt && blockAlignmentUnit > 0) {
+                     desiredStartIpLong = alignToBlockBoundary(currentVisibleRange.startInt, blockAlignmentUnit);
+                     if(desiredStartIpLong < currentVisibleRange.startInt && currentVisibleRange.startInt + blockAlignmentUnit <= currentVisibleRange.endInt) {
+                         desiredStartIpLong += blockAlignmentUnit; 
+                     }
+                     desiredStartIpLong = Math.max(currentVisibleRange.startInt, desiredStartIpLong); 
+                }
+                
+                if (desiredStartIpLong + newBlock.numAddresses -1 > currentVisibleRange.endInt && blockAlignmentUnit > 0) { 
+                     desiredStartIpLong = alignToBlockBoundary(currentVisibleRange.endInt - newBlock.numAddresses + 1, blockAlignmentUnit);
+                }
+                desiredStartIpLong = Math.max(currentVisibleRange.startInt, desiredStartIpLong); 
+                desiredStartIpLong = Math.min(desiredStartIpLong, currentVisibleRange.endInt - Math.max(0, newBlock.numAddresses -1) ); 
+                
+                let finalStartIpLong = desiredStartIpLong; 
+                let currentBlockAttempt = { startInt: finalStartIpLong, endInt: (finalStartIpLong + newBlock.numAddresses - 1), numAddresses: newBlock.numAddresses, prefix: newBlock.sizePrefix, isExistingMove: newBlock.isExistingMove, originalMasterBlockRef: newBlock.originalMasterBlockRef };
+                let isColliding = checkCollisionWithExisting(currentBlockAttempt);
+                
+                if (isColliding && !fromExistingClick) { 
+                    let responsibleBlock = null;
+                    for (const existing of masterExistingBlocks) { if (newBlock.isExistingMove && existing === newBlock.originalMasterBlockRef) continue; if (checkOverlap(currentBlockAttempt, existing)) { responsibleBlock = existing; break; } }
+                    if (responsibleBlock) {
+                        let nextAvailableStartIpLong = responsibleBlock.endInt + 1; 
+                        if (blockAlignmentUnit > 1) { 
+                           nextAvailableStartIpLong = alignToBlockBoundary(nextAvailableStartIpLong, blockAlignmentUnit); 
+                           if (nextAvailableStartIpLong < responsibleBlock.endInt + 1) nextAvailableStartIpLong += blockAlignmentUnit;
+                        }
+
+                        if (nextAvailableStartIpLong + newBlock.numAddresses -1 <= currentVisibleRange.endInt) { 
+                            let skippedBlockAttempt = { ...currentBlockAttempt, startInt: nextAvailableStartIpLong, endInt: (nextAvailableStartIpLong + newBlock.numAddresses - 1) };
+                            if (!checkCollisionWithExisting(skippedBlockAttempt)) { finalStartIpLong = nextAvailableStartIpLong; isColliding = false; }
+                        }
+                    }
+                }
+                newBlock.currentStartInt = finalStartIpLong; newBlock.currentEndInt = (finalStartIpLong + newBlock.numAddresses - 1);
+                if (!currentVisibleRange || currentVisibleRange.numAddresses <= 0) return; 
+                const percentageStart = ((newBlock.currentStartInt - currentVisibleRange.startInt) / currentVisibleRange.numAddresses) * 100; 
+                const percentageWidth = (newBlock.numAddresses / currentVisibleRange.numAddresses) * 100;
+                
+                const clampedNewBlockStart = Math.max(0, Math.min(100 - Math.max(0.1,percentageWidth), percentageStart));
+                newBlock.domElement.style.left = `${clampedNewBlockStart}%`; 
+                newBlock.domElement.style.width = `${Math.max(0.1, percentageWidth)}%`;
+
+                newBlock.domElement.title = `${newBlock.isExistingMove ? 'Moving: ' : 'New: '}/${newBlock.sizePrefix}: ${longToIp(newBlock.currentStartInt)} - ${longToIp(newBlock.currentEndInt)}`; if (newBlock.name) newBlock.domElement.title += `\nName: ${newBlock.name}`;
+                const isMisaligned = (blockAlignmentUnit > 1 && (newBlock.currentStartInt % blockAlignmentUnit !== 0));
+                newBlock.domElement.classList.toggle('collision', isColliding); newBlock.domElement.classList.toggle('misaligned', isMisaligned && !isColliding);
+                updateNewBlockInfoPanel(newBlock.currentStartInt, newBlock.currentEndInt, newBlock.sizePrefix, newBlock.name, newBlock.numAddresses, isColliding, isMisaligned, newBlock.isExistingMove);
+            }
+            function checkOverlap(block1, block2) { return block1.startInt <= block2.endInt && block1.endInt >= block2.startInt; }
+            function checkCollisionWithExisting(blockToCheck) { for (const existing of masterExistingBlocks) { if (blockToCheck.isExistingMove && existing === blockToCheck.originalMasterBlockRef) continue; if (checkOverlap(blockToCheck, existing)) return true; } return false; }
+
+            function initiateDragDraggable(clientX) { if (!newBlock || !newBlock.domElement) return false; draggable.dragging = true; draggable.element = newBlock.domElement; draggable.element.classList.add('dragging'); const elemRect = draggable.element.getBoundingClientRect(); draggable.offsetX = clientX - elemRect.left; return true; }
+            function performDragDraggable(clientX) { if (!draggable.dragging || !currentVisibleRange || !newBlock || currentVisibleRange.numAddresses <= 0) return; const visualizationRect = visualizationArea.getBoundingClientRect(); let currentX = clientX - visualizationRect.left - draggable.offsetX;  let percentX = (currentX / visualizationArea.clientWidth) * 100; let potentialStartIp = currentVisibleRange.startInt + Math.round((percentX / 100) * currentVisibleRange.numAddresses); updateNewBlockPositionAndInfo(potentialStartIp); }
+            function finalizeDragDraggable() { if (!draggable.dragging) return; draggable.dragging = false; if (draggable.element) draggable.element.classList.remove('dragging'); draggable.element = null; if (newBlock) updateNewBlockPositionAndInfo(newBlock.currentStartInt); }
+            function handleMouseDownDraggable(e) { if (e.button !== 0) return; if (initiateDragDraggable(e.clientX)) { document.addEventListener('mousemove', handleMouseMoveDraggable); document.addEventListener('mouseup', handleMouseUpDraggable); e.preventDefault(); } }
+            function handleMouseMoveDraggable(e) { performDragDraggable(e.clientX); }
+            function handleMouseUpDraggable() { finalizeDragDraggable(); document.removeEventListener('mousemove', handleMouseMoveDraggable); document.removeEventListener('mouseup', handleMouseUpDraggable); }
+            function handleTouchStartDraggable(e) { if (e.touches.length !== 1 || draggable.dragging) return; draggable.isTouch = true; if (initiateDragDraggable(e.touches[0].clientX)) { document.addEventListener('touchmove', handleTouchMoveDraggable, { passive: false }); document.addEventListener('touchend', handleTouchEndDraggable); document.addEventListener('touchcancel', handleTouchEndDraggable); } }
+            function handleTouchMoveDraggable(e) { if (e.touches.length !== 1) return; performDragDraggable(e.touches[0].clientX); e.preventDefault(); }
+            function handleTouchEndDraggable() { finalizeDragDraggable(); document.removeEventListener('touchmove', handleTouchMoveDraggable); document.removeEventListener('touchend', handleTouchEndDraggable); document.removeEventListener('touchcancel', handleTouchEndDraggable); draggable.isTouch = false; }
+            
+            function canStartFocusSelection(eventTarget) { return !newBlock && newBlockSizeSelect.value === "" && currentVisibleRange && (eventTarget === visualizationArea || eventTarget === totalRangeBar || eventTarget === placementGuidesDiv); }
+            function handleMouseDownFocusSelect(e) { if (e.button !== 0 || !canStartFocusSelection(e.target)) return; isSelectingFocusArea = true; updateVisualizationAreaCursor(); const rect = visualizationArea.getBoundingClientRect(); focusSelectionStartPx = e.clientX - rect.left; focusSelectionRectDOM.style.left = `${focusSelectionStartPx}px`; focusSelectionRectDOM.style.width = '0px'; focusSelectionRectDOM.style.display = 'block'; document.addEventListener('mousemove', handleMouseMoveFocusSelect); document.addEventListener('mouseup', handleMouseUpFocusSelect); e.preventDefault(); }
+            function handleMouseMoveFocusSelect(e) { if (!isSelectingFocusArea) return; const rect = visualizationArea.getBoundingClientRect(); let currentX = e.clientX - rect.left; currentX = Math.max(0, Math.min(currentX, visualizationArea.clientWidth)); const left = Math.min(focusSelectionStartPx, currentX); const width = Math.abs(currentX - focusSelectionStartPx); focusSelectionRectDOM.style.left = `${left}px`; focusSelectionRectDOM.style.width = `${width}px`; }
+            function handleMouseUpFocusSelect() { 
+                if (!isSelectingFocusArea) return; 
+                isSelectingFocusArea = false; updateVisualizationAreaCursor(); focusSelectionRectDOM.style.display = 'none'; 
+                document.removeEventListener('mousemove', handleMouseMoveFocusSelect); document.removeEventListener('mouseup', handleMouseUpFocusSelect); 
+                const selectionWidthPx = parseFloat(focusSelectionRectDOM.style.width); 
+                if (selectionWidthPx < MIN_FOCUS_SELECTION_PX || !currentVisibleRange || currentVisibleRange.numAddresses <= 0) return; 
+                const selectionLeftPx = parseFloat(focusSelectionRectDOM.style.left); 
+                const vizWidthPx = visualizationArea.clientWidth; 
+                const startPercent = (selectionLeftPx / vizWidthPx); 
+                const endPercent = ((selectionLeftPx + selectionWidthPx) / vizWidthPx); 
+                
+                const selectedStartIpLong = currentVisibleRange.startInt + Math.floor(startPercent * currentVisibleRange.numAddresses);
+                let selectedEndIpLong = currentVisibleRange.startInt + Math.floor(endPercent * currentVisibleRange.numAddresses) -1; 
+                if (endPercent >= 0.999 && (selectionLeftPx + selectionWidthPx >= vizWidthPx -1) ) selectedEndIpLong = currentVisibleRange.endInt; 
+                if (selectedEndIpLong < selectedStartIpLong) selectedEndIpLong = selectedStartIpLong; 
+
+                const targetViewCidr = getEncompassingCidrForFocus(selectedStartIpLong, selectedEndIpLong); 
+                if (targetViewCidr) { 
+                    focusCidrInput.value = targetViewCidr.cidrStr; 
+                    focusButton.click(); 
+                } else {
+                    showError("Could not determine a valid focus area for selection.");
+                }
+            }
+            function handleTouchStartFocusSelect(e) { if (e.touches.length !== 1 || !canStartFocusSelection(e.target)) return; isSelectingFocusArea = true; updateVisualizationAreaCursor(); const rect = visualizationArea.getBoundingClientRect(); focusSelectionStartPx = e.touches[0].clientX - rect.left; focusSelectionRectDOM.style.left = `${focusSelectionStartPx}px`; focusSelectionRectDOM.style.width = '0px'; focusSelectionRectDOM.style.display = 'block'; document.addEventListener('touchmove', handleTouchMoveFocusSelect, { passive: false }); document.addEventListener('touchend', handleTouchEndFocusSelect); document.addEventListener('touchcancel', handleTouchEndFocusSelect); }
+            function handleTouchMoveFocusSelect(e) { if (!isSelectingFocusArea || e.touches.length !== 1) return; const rect = visualizationArea.getBoundingClientRect(); let currentX = e.touches[0].clientX - rect.left; currentX = Math.max(0, Math.min(currentX, visualizationArea.clientWidth)); const left = Math.min(focusSelectionStartPx, currentX); const width = Math.abs(currentX - focusSelectionStartPx); focusSelectionRectDOM.style.left = `${left}px`; focusSelectionRectDOM.style.width = `${width}px`; e.preventDefault(); }
+            function handleTouchEndFocusSelect() {  
+                if (!isSelectingFocusArea) return; 
+                isSelectingFocusArea = false; updateVisualizationAreaCursor(); focusSelectionRectDOM.style.display = 'none'; 
+                document.removeEventListener('touchmove', handleTouchMoveFocusSelect); document.removeEventListener('touchend', handleTouchEndFocusSelect); document.removeEventListener('touchcancel', handleTouchEndFocusSelect); 
+                const selectionWidthPx = parseFloat(focusSelectionRectDOM.style.width); 
+                if (selectionWidthPx < MIN_FOCUS_SELECTION_PX || !currentVisibleRange || currentVisibleRange.numAddresses <= 0) return; 
+                const selectionLeftPx = parseFloat(focusSelectionRectDOM.style.left); 
+                const vizWidthPx = visualizationArea.clientWidth; 
+                const startPercent = (selectionLeftPx / vizWidthPx); 
+                const endPercent = ((selectionLeftPx + selectionWidthPx) / vizWidthPx); 
+                const selectedStartIpLong = currentVisibleRange.startInt + Math.floor(startPercent * currentVisibleRange.numAddresses);
+                let selectedEndIpLong = currentVisibleRange.startInt + Math.floor(endPercent * currentVisibleRange.numAddresses) -1; 
+                if (endPercent >= 0.999 && (selectionLeftPx + selectionWidthPx >= vizWidthPx -1) ) selectedEndIpLong = currentVisibleRange.endInt;
+                if (selectedEndIpLong < selectedStartIpLong) selectedEndIpLong = selectedStartIpLong; 
+
+                const targetViewCidr = getEncompassingCidrForFocus(selectedStartIpLong, selectedEndIpLong); 
+                if (targetViewCidr) { 
+                    focusCidrInput.value = targetViewCidr.cidrStr; 
+                    focusButton.click(); 
+                } else {
+                    showError("Could not determine a valid focus area for selection.");
+                }
+            }
+            visualizationArea.addEventListener('mousedown', handleMouseDownFocusSelect);
+            visualizationArea.addEventListener('touchstart', handleTouchStartFocusSelect, { passive: true });
+
+            focusButton.addEventListener('click', () => { 
+                clearError(); 
+                if (!currentVisibleRange) { showError("Set master range first."); return; } 
+                const focusCidrStr = focusCidrInput.value.trim(); 
+                if (!focusCidrStr) { showError("Enter a CIDR to focus on or drag-select."); return; } 
+                
+                const focusInfo = getCidrInfo(focusCidrStr); 
+                
+                if (!focusInfo) return; 
+                
+                let isValidFocus = true;
+                if (!masterTotalRange) { showError("Master range not set."); return; }
+
+                if (focusInfo.cidrStr === masterTotalRange.cidrStr) {
+                    // Allow focusing back to master range
+                } else {
+                     if (focusInfo.startInt < masterTotalRange.startInt || focusInfo.endInt > masterTotalRange.endInt) {
+                        showError(`Focus CIDR ${focusInfo.cidrStr} outside Master Range ${masterTotalRange.cidrStr}.`);
+                        isValidFocus = false;
+                     } else if (focusInfo.numAddresses > currentVisibleRange.numAddresses && focusInfo.cidrStr !== currentVisibleRange.cidrStr) {
+                        if (focusInfo.startInt < currentVisibleRange.startInt || focusInfo.endInt > currentVisibleRange.endInt) {
+                            if (focusInfo.numAddresses > currentVisibleRange.numAddresses) {
+                                showError(`Focus CIDR ${focusInfo.cidrStr} is larger than current view and outside it. Try zooming out or selecting a smaller sub-section.`);
+                                isValidFocus = false;
+                            }
+                        } else { 
+                             showError(`Focus CIDR ${focusInfo.cidrStr} is larger than current view ${currentVisibleRange.cidrStr}. Zoom out first or select a smaller area.`);
+                             isValidFocus = false;
+                        }
+                    }
+                }
+
+                if (!isValidFocus) return;
+
+                viewHistoryStack.push(currentVisibleRange); 
+                initializeNewView(focusInfo); 
+                focusCidrInput.value = ''; 
+            });
+            zoomOutButton.addEventListener('click', () => { clearError(); if (viewHistoryStack.length > 0) initializeNewView(viewHistoryStack.pop()); });
+            resetViewButton.addEventListener('click', () => { clearError(); if (masterTotalRange) { viewHistoryStack = []; initializeNewView(masterTotalRange); } else { showError("Master range not set."); }});
+
+            panLeftButton.addEventListener('click', () => {
+                if (!currentVisibleRange || !masterTotalRange || panLeftButton.disabled) return;
+                clearError();
+                
+                const panStepPrefix = Math.min(32, currentVisibleRange.prefix + 4);
+                let panAmount = Math.pow(2, 32 - panStepPrefix);
+                panAmount = Math.max(1, panAmount); 
+
+                let intendedNewViewStartUnprocessed = currentVisibleRange.startInt - panAmount;
+                intendedNewViewStartUnprocessed = Math.max(0, intendedNewViewStartUnprocessed);
+                
+                const tempNewViewInfo = getCidrInfo(`${longToIp(intendedNewViewStartUnprocessed)}/${currentVisibleRange.prefix}`);
+                let intendedNewViewStart;
+
+                if (tempNewViewInfo && tempNewViewInfo.startInt < currentVisibleRange.startInt) {
+                    intendedNewViewStart = tempNewViewInfo.startInt;
+                } else {
+                     if (currentVisibleRange.startInt <= masterTotalRange.startInt) {
+                        updateViewControls(); 
+                        return;
+                    }
+                    intendedNewViewStart = currentVisibleRange.startInt - currentVisibleRange.numAddresses;
+                     if (intendedNewViewStart < 0) intendedNewViewStart = 0; 
+                }
+
+                intendedNewViewStart = Math.max(intendedNewViewStart, masterTotalRange.startInt); 
+                
+                const finalNewViewInfo = getCidrInfo(`${longToIp(intendedNewViewStart)}/${currentVisibleRange.prefix}`);
+
+                if (finalNewViewInfo && finalNewViewInfo.startInt < currentVisibleRange.startInt) { 
+                    viewHistoryStack.push(currentVisibleRange);
+                    initializeNewView(finalNewViewInfo);
+                } else if (finalNewViewInfo && finalNewViewInfo.startInt === currentVisibleRange.startInt && currentVisibleRange.startInt > masterTotalRange.startInt) { 
+                     const snapToStartInfo = getCidrInfo(`${longToIp(masterTotalRange.startInt)}/${currentVisibleRange.prefix}`);
+                     if (snapToStartInfo) initializeNewView(snapToStartInfo);
+                } else {
+                    updateViewControls(); 
+                }
+            });
+
+            panRightButton.addEventListener('click', () => {
+                if (!currentVisibleRange || !masterTotalRange || panRightButton.disabled) return;
+                clearError();
+
+                const panStepPrefix = Math.min(32, currentVisibleRange.prefix + 4);
+                let panAmount = Math.pow(2, 32 - panStepPrefix);
+                panAmount = Math.max(1, panAmount); 
+
+                let nextIpToConsider = currentVisibleRange.startInt + panAmount;
+                if (nextIpToConsider > 0xFFFFFFFF || nextIpToConsider < currentVisibleRange.startInt) { 
+                    nextIpToConsider = 0xFFFFFFFF;
+                }
+                
+                let tempNewViewInfo = getCidrInfo(`${longToIp(nextIpToConsider)}/${currentVisibleRange.prefix}`);
+                let intendedNewViewStart;
+
+                if (tempNewViewInfo && tempNewViewInfo.startInt > currentVisibleRange.startInt) {
+                    intendedNewViewStart = tempNewViewInfo.startInt;
+                } else {
+                    if (currentVisibleRange.endInt >= masterTotalRange.endInt) {
+                        updateViewControls(); 
+                        return; 
+                    }
+                    intendedNewViewStart = currentVisibleRange.startInt + currentVisibleRange.numAddresses;
+                    if (intendedNewViewStart > 0xFFFFFFFF || intendedNewViewStart < currentVisibleRange.startInt) { 
+                        intendedNewViewStart = 0xFFFFFFFF; 
+                    }
+                }
+                
+                const maxPossibleStartForView = masterTotalRange.endInt - currentVisibleRange.numAddresses + 1;
+                
+                intendedNewViewStart = Math.min(intendedNewViewStart, maxPossibleStartForView);
+                intendedNewViewStart = Math.max(intendedNewViewStart, masterTotalRange.startInt); 
+
+                const finalNewViewInfo = getCidrInfo(`${longToIp(intendedNewViewStart)}/${currentVisibleRange.prefix}`);
+
+                if (finalNewViewInfo && finalNewViewInfo.startInt > currentVisibleRange.startInt) {
+                    viewHistoryStack.push(currentVisibleRange);
+                    initializeNewView(finalNewViewInfo);
+                } else {
+                    updateViewControls(); 
+                }
+            });
+
+
+            reserveNewBlockButton.addEventListener('click', () => {
+                clearError(); if (!newBlock || !currentVisibleRange || reserveNewBlockButton.disabled) { showError("Cannot confirm: No valid block selected or placement is invalid."); return; }
+                
+                const tempCidrStr = `${longToIp(newBlock.currentStartInt)}/${newBlock.sizePrefix}`;
+                const blockName = newBlockNameInput.value.trim();
+                const blockInfoForStorage = getCidrInfo(tempCidrStr + (blockName ? ` # ${blockName}` : ''));
+
+                if (!blockInfoForStorage) { showError("Failed to create valid block info for reservation."); return; } 
+
+                if (checkCollisionWithExisting({ ...blockInfoForStorage, isExistingMove: newBlock.isExistingMove, originalMasterBlockRef: newBlock.originalMasterBlockRef })) { 
+                    showError("Error: Collision detected on final check. Cannot confirm."); 
+                    updateNewBlockPositionAndInfo(newBlock.currentStartInt); return; 
+                }
+                
+                if (newBlock.isExistingMove) { 
+                    const targetBlockIndex = masterExistingBlocks.findIndex(b => b === newBlock.originalMasterBlockRef);
+                    if (targetBlockIndex > -1) masterExistingBlocks[targetBlockIndex] = blockInfoForStorage;
+                    else { 
+                        console.warn("Original block for move not found in masterExistingBlocks. Appending new block.");
+                        masterExistingBlocks.push(blockInfoForStorage);
+                    }
+                } else { 
+                    masterExistingBlocks.push(blockInfoForStorage); 
+                }
+                masterExistingBlocks.sort((a, b) => a.startInt - b.startInt); updateExistingCidrsTextarea();
+                const currentRangeToPreserve = currentVisibleRange; 
+                if (newBlock && newBlock.domElement) removeDraggableListeners(newBlock.domElement);
+                cleanupPreviousNewBlockState(); 
+                newBlockSizeSelect.value = ""; 
+                initializeNewView(currentRangeToPreserve); updateNewBlockInfoPanelWithDefault();
+            });
+
+            function downloadFile(filename, content, mimeType) {
+                const element = document.createElement('a');
+                element.setAttribute('href', `data:${mimeType};charset=utf-8,` + encodeURIComponent(content));
+                element.setAttribute('download', filename);
+                element.style.display = 'none'; document.body.appendChild(element); element.click(); document.body.removeChild(element);
+            }
+
+            exportBlocksButton.addEventListener('click', () => {
+                if (!masterTotalRange || masterExistingBlocks.length === 0) { showError("No master range set or no blocks to export."); return; }
+                clearError(); const format = exportFormatSelect.value;
+                let fileContent = ''; 
+                let filename = 'cidr_blocks';
+                let mimeType = 'text/plain';
+                
+                const exportData = {
+                    master_range: masterTotalRange.cidrStr,
+                    blocks: masterExistingBlocks.map(b => ({ cidr: b.cidrStr, name: b.name }))
+                };
+
+                if (format === 'text') {
+                    fileContent = `# Master Range: ${masterTotalRange.cidrStr}\n`;
+                    fileContent += exportData.blocks.map(b => `${b.cidr}${b.name ? ` # ${b.name}` : ''}`).join('\n');
+                    filename += '.txt';
+                } else if (format === 'json') {
+                    fileContent = JSON.stringify(exportData, null, 2); filename += '.json'; mimeType = 'application/json';
+                } else if (format === 'xml') {
+                    fileContent = `<cidrdata master_range="${masterTotalRange.cidrStr}">\n  <blocks>\n`;
+                    exportData.blocks.forEach(b => {
+                        fileContent += `    <block>\n      <cidr>${b.cidr}</cidr>\n`;
+                        if (b.name) fileContent += `      <name>${b.name.replace(/[<&>]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</name>\n`;
+                        fileContent += `    </block>\n`;
+                    });
+                    fileContent += '  </blocks>\n</cidrdata>'; filename += '.xml'; mimeType = 'application/xml';
+                } else if (format === 'yaml') {
+                    if (typeof jsyaml === 'undefined') { showError("YAML library not loaded."); return; }
+                    fileContent = jsyaml.dump(exportData); filename += '.yaml'; mimeType = 'application/x-yaml';
+                }
+                downloadFile(filename, fileContent, mimeType);
+            });
+
+            importBlocksButton.addEventListener('click', () => { 
+                importFileInput.click(); 
+            });
+            importFileInput.addEventListener('change', (event) => {
+                clearError(); const file = event.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const fileContent = e.target.result; 
+                    let importedBlocksRaw = [];
+                    let importedMasterRangeStr = null;
+
+                    try {
+                        if (file.name.endsWith('.txt')) {
+                            const lines = fileContent.split('\n');
+                            if (lines.length > 0 && lines[0].toLowerCase().startsWith('# master range:')) {
+                                importedMasterRangeStr = lines[0].substring(lines[0].indexOf(':') + 1).trim();
+                                importedBlocksRaw = lines.slice(1).filter(line => line.trim() !== '' && !line.trim().startsWith('#'));
+                            } else {
+                                importedBlocksRaw = lines.filter(line => line.trim() !== '' && !line.trim().startsWith('#'));
+                            }
+                        } else if (file.name.endsWith('.json')) {
+                            const jsonData = JSON.parse(fileContent);
+                            if (jsonData.master_range) importedMasterRangeStr = jsonData.master_range;
+                            if (Array.isArray(jsonData.blocks)) importedBlocksRaw = jsonData.blocks.map(item => `${item.cidr}${item.name ? ` # ${item.name}` : ''}`);
+                            else if (Array.isArray(jsonData)) { 
+                                 importedBlocksRaw = jsonData.map(item => `${item.cidr}${item.name ? ` # ${item.name}` : ''}`);
+                            } else throw new Error("JSON format error: Expected 'blocks' array and optional 'master_range', or an array of block objects.");
+                        } else if (file.name.endsWith('.xml')) {
+                            const parser = new DOMParser(); const xmlDoc = parser.parseFromString(fileContent, "application/xml");
+                            const errorNode = xmlDoc.querySelector('parsererror'); if (errorNode) throw new Error("XML parsing error: " + errorNode.textContent);
+                            
+                            const dataNode = xmlDoc.querySelector('cidrdata');
+                            if (dataNode && dataNode.getAttribute('master_range')) {
+                                importedMasterRangeStr = dataNode.getAttribute('master_range');
+                            }
+                            const blockNodes = xmlDoc.querySelectorAll('block'); 
+                            blockNodes.forEach(node => {
+                                const cidrEl = node.querySelector('cidr'); const nameEl = node.querySelector('name');
+                                if (cidrEl) importedBlocksRaw.push(`${cidrEl.textContent}${nameEl && nameEl.textContent ? ` # ${nameEl.textContent}` : ''}`);
+                            });
+                        } else if (file.name.endsWith('.yaml') || file.name.endsWith('.yml')) {
+                            if (typeof jsyaml === 'undefined') { showError("YAML library not loaded. Cannot import YAML."); return; }
+                            const yamlData = jsyaml.load(fileContent);
+                            if (yamlData.master_range) importedMasterRangeStr = yamlData.master_range;
+                            if (Array.isArray(yamlData.blocks)) importedBlocksRaw = yamlData.blocks.map(item => `${item.cidr}${item.name ? ` # ${item.name}` : ''}`);
+                             else if (Array.isArray(yamlData)) { 
+                                 importedBlocksRaw = yamlData.map(item => `${item.cidr}${item.name ? ` # ${item.name}` : ''}`);
+                            } else throw new Error("YAML format error: Expected 'blocks' array and optional 'master_range', or an array of block objects.");
+                        } else { throw new Error("Unsupported file type. Please use .txt, .json, .xml, or .yaml."); }
+
+                        const tempParsedBlocks = [];
+                        let errorFound = false;
+                        let minImportedStart = 0xFFFFFFFF, maxImportedEnd = 0;
+
+                        for (const entry of importedBlocksRaw) {
+                            const info = getCidrInfo(entry.trim());
+                            if (info) {
+                                tempParsedBlocks.push(info);
+                                minImportedStart = Math.min(minImportedStart, info.startInt);
+                                maxImportedEnd = Math.max(maxImportedEnd, info.endInt);
+                            } else { errorFound = true; break; } 
+                        }
+                        if (errorFound) return; 
+
+                        let newMasterRangeToSet = null;
+                        if (importedMasterRangeStr) {
+                            newMasterRangeToSet = getCidrInfo(importedMasterRangeStr);
+                            if (!newMasterRangeToSet) {
+                                showError(`Invalid master_range "${importedMasterRangeStr}" in file. Cannot import.`); 
+                                return;
+                            }
+                        } else if (tempParsedBlocks.length > 0) {
+                            const rfcRanges = [getCidrInfo("10.0.0.0/8"), getCidrInfo("172.16.0.0/12"), getCidrInfo("192.168.0.0/16")].filter(r => r);
+                            for (const rfc of rfcRanges) {
+                                if (minImportedStart >= rfc.startInt && maxImportedEnd <= rfc.endInt) {
+                                    newMasterRangeToSet = rfc;
+                                    break;
+                                }
+                            }
+                            if (!newMasterRangeToSet) { 
+                                const pseudoMaster = getCidrInfo("0.0.0.0/0"); 
+                                if (pseudoMaster) {
+                                    const tempCurrentVisible = currentVisibleRange; 
+                                    currentVisibleRange = pseudoMaster; 
+                                    newMasterRangeToSet = getEncompassingCidrForFocus(minImportedStart, maxImportedEnd);
+                                    currentVisibleRange = tempCurrentVisible; 
+                                }
+                                if(!newMasterRangeToSet) console.warn("Could not auto-determine encompassing CIDR for import.");
+                            }
+                        }
+
+                        if (!newMasterRangeToSet && tempParsedBlocks.length > 0) { 
+                             const tempCurrentVisible = currentVisibleRange;
+                             currentVisibleRange = getCidrInfo("0.0.0.0/0"); 
+                             const autoMaster = getEncompassingCidrForFocus(minImportedStart, maxImportedEnd);
+                             currentVisibleRange = tempCurrentVisible;
+
+                             if (autoMaster) {
+                                 newMasterRangeToSet = autoMaster;
+                                 showError("Could not fit imported blocks into a standard range. Using tightest fit as master: " + newMasterRangeToSet.cidrStr);
+                             } else { 
+                                 showError("Could not determine a valid master range for imported blocks."); return; 
+                             }
+                        } else if (!newMasterRangeToSet && tempParsedBlocks.length === 0){
+                            showError("No blocks to import and no master range specified in file."); return;
+                        }
+                         if (!newMasterRangeToSet) { 
+                            showError("Unable to determine master range from import file."); return;
+                         }
+
+
+                        const finalBlocksToImport = [];
+                        for (const info of tempParsedBlocks) {
+                            if (info.startInt < newMasterRangeToSet.startInt || info.endInt > newMasterRangeToSet.endInt) { 
+                                showError(`Block ${info.cidrStr} is outside the determined/imported master range ${newMasterRangeToSet.cidrStr}.`); 
+                                errorFound = true; break; 
+                            }
+                             for (const eb of finalBlocksToImport) { 
+                               if (checkOverlap(info, eb)) { showError(`Imported blocks ${info.cidrStr} and ${eb.cidrStr} overlap.`); errorFound = true; break; }
+                            }
+                            if(errorFound) break;
+                            finalBlocksToImport.push(info);
+                        }
+                        if (errorFound) return;
+
+
+                        if (confirm(`Import ${finalBlocksToImport.length} blocks and set master range to ${newMasterRangeToSet.cidrStr}? This will replace current configuration.`)) {
+                            totalCidrInput.value = newMasterRangeToSet.cidrStr; 
+                            setTotalRangeButton.click(); 
+                            masterExistingBlocks = finalBlocksToImport.sort((a,b) => a.startInt - b.startInt);
+                            initializeNewView(masterTotalRange); 
+                            updateExistingCidrsTextarea();
+                            showError(`Successfully imported ${masterExistingBlocks.length} blocks and set master range to ${masterTotalRange.cidrStr}.`);
+                        } else { showError("Import cancelled by user."); }
+
+                    } catch (err) { showError("Error processing file: " + err.message); console.error(err); } 
+                    finally { importFileInput.value = ''; }
+                };
+                reader.onerror = () => { showError("Error reading file."); importFileInput.value = ''; };
+                reader.readAsText(file);
+            });
+
+            function init() { 
+                masterRangePresetSelect.value = "10.0.0.0/8"; 
+                totalCidrLabel.style.display = 'none'; 
+                totalCidrInput.style.display = 'none'; 
+                totalCidrInput.readOnly = true;
+                totalCidrInput.value = "10.0.0.0/8"; 
+                exportFormatSelect.value = "json"; 
+                setTotalRangeButton.click(); 
+                updateVisualizationAreaCursor(); 
+                updateIOButtonsState(); 
+            }
+            init();
+        });
+    </script>
+</body>
+</html>
