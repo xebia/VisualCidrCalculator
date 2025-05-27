@@ -1,6 +1,8 @@
 # VisualCidrCalculator
 The HTML file in this repository provides a simple way to visualize the IP address space, the reservations and abilities to reserve and adjust CIDR blocks for usage in your private network. The code has been written with the support of AI tooling. There is no tracking done nor connectivity to any backend service. You can save and load your ranges from local files, following the export format in this document.
 
+Visit the calculator at [https://xebia.github.io/VisualCidrCalculator/](https://xebia.github.io/VisualCidrCalculator/)
+
 ## Capabilities:
  - Display CIDR blocks on a predefined master range (Either class A/B/C from the RFC1918 or a custom range)
  - Placement of new CIDR blocks based on the available block size in de visualized range, including collision detection and naming
